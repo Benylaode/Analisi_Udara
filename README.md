@@ -1,1 +1,20 @@
-# Analisi_Udara
+# Dicoding Collection Dashboard
+
+## Setup Environment
+
+### Shell/Terminal
+```sh
+python -m venv myenv
+python myenv/bin/activate
+pip install -r requirements.txt
+mkdir proyek_analisis_data
+cd proyek_analisis_data
+clone "url_repo"
+```
+
+## Menjalankan Aplikasi
+```sh
+streamlit run dashboard.py
+```
+
+Dikembangkan oleh Fahmi.

@@ -14,7 +14,7 @@ clone "url_repo"
 
 ## Menjalankan Aplikasi
 ```sh
-streamlit run dashboard.py
+streamlit run dasbor.py
 ```
 
 Dikembangkan oleh Fahmi.

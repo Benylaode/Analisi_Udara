@@ -1,6 +1,6 @@
 # Analisi Udara Daschboard
 
-## Setup Environment
+## Setup Environment dan Proyek
 
 ### Shell/Terminal
 ```sh
@@ -9,7 +9,8 @@ python myenv/bin/activate
 pip install -r requirements.txt
 mkdir proyek_analisis_data
 cd proyek_analisis_data
-clone "url_repo"
+git clone "url_repo"
+cd Analisi_Udara
 ```
 
 ## Menjalankan Aplikasi

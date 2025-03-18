@@ -5,6 +5,7 @@ import streamlit as st
 
 data = pd.read_csv("data_udarah.csv")
 data['datetime'] = pd.to_datetime(data['datetime'])
+data['year'] = data['datetime'].dt.year
 
 st.sidebar.header("Filter Data")
 tanggal_input = st.sidebar.date_input("Rentang Tanggal", [data['datetime'].min(), data['datetime'].max()])
@@ -36,23 +37,18 @@ ax.set_ylabel("Konsentrasi")
 ax.legend(title="Parameter")
 st.pyplot(fig)
 
+df_avg = data.groupby("station")[selected_parameters].mean()
 if view_option == "Rata-rata per Stasiun":
-    station_avg = data.groupby("station")[selected_parameters].mean()
     fig, ax = plt.subplots(figsize=(12, 6))
-    station_avg.plot(kind='bar', ax=ax, colormap='coolwarm')
+    df_avg.plot(kind='bar', ax=ax, colormap='coolwarm')
     ax.set_title("Rata-rata Kualitas Udara per Stasiun")
-    ax.set_xlabel("Stasiun")
-    ax.set_ylabel("Konsentrasi")
     st.pyplot(fig)
 
 elif view_option == "Rata-rata per Tahun":
-    data['year'] = data['datetime'].dt.year
-    yearly_avg = data.groupby("year")[selected_parameters].mean()
+    df_yearly = data.groupby("year")[selected_parameters].mean()
     fig, ax = plt.subplots(figsize=(12, 6))
-    yearly_avg.plot(kind='bar', ax=ax, colormap='viridis')
+    df_yearly.plot(kind='bar', ax=ax, colormap='viridis')
     ax.set_title("Rata-rata Kualitas Udara per Tahun")
-    ax.set_xlabel("Tahun")
-    ax.set_ylabel("Konsentrasi")
     st.pyplot(fig)
 
 elif view_option == "Rata-rata sesuai Rentang":
@@ -60,29 +56,66 @@ elif view_option == "Rata-rata sesuai Rentang":
     fig, ax = plt.subplots(figsize=(12, 6))
     range_avg.plot(kind='bar', ax=ax, color='teal')
     ax.set_title("Rata-rata Kualitas Udara dalam Rentang Waktu Dipilih")
-    ax.set_xlabel("Parameter")
-    ax.set_ylabel("Konsentrasi")
     st.pyplot(fig)
 
+data_2016 = data[data['year'] == 2016]
+stasiun_terburuk = data_2016.groupby("station")['Rata-Rata Kualitas Udarah'].mean().idxmax()
+st.metric("Stasiun dengan Kualitas Udara Terburuk (2016)", value=stasiun_terburuk)
+
+df_avg_2016 = data[data["year"] == 2016].groupby("station")["Rata-Rata Kualitas Udarah"].mean()
+
+max_value = df_avg_2016.max()
+max_station = df_avg_2016.idxmax()
+
+stations = list(df_avg_2016.index)
+max_index = stations.index(max_station)
+colors = ["red" if station == max_station else "blue" for station in df_avg_2016.index]
+
+fig, ax = plt.subplots(figsize=(12, 6))
+df_avg_2016.plot(kind='bar', ax=ax, color=colors)
+ax.set_title("Rata-Rata Kualitas Udarah per Stasiun pada rentang 2016")
+ax.set_ylabel("Rata-Rata Kualitas Udarah")
+ax.set_xlabel("Stasiun")
+
+ax.text(max_index, max_value, f"{max_value:.2f}", ha='center', va='bottom', fontsize=12, fontweight='bold', color='red')
+st.pyplot(fig)
+
+
+
+jumlah_data_per_tahun = data.groupby("year")['Rata-Rata Kualitas Udarah'].count()
+print(jumlah_data_per_tahun)
+tahun_lengkap = jumlah_data_per_tahun[jumlah_data_per_tahun >= 73210].index
+df_filtered = data[data["year"].isin(tahun_lengkap)].groupby("year")['Rata-Rata Kualitas Udarah'].mean()
+tahun_terburuk = df_filtered.idxmax()
+
+st.metric("Tahun dengan Kualitas Udara Terburuk (hany menampilkan data yang lengkap satu tahun)", value=tahun_terburuk)
+colors = ['gray'] * len(df_filtered)
+colors[df_filtered.index.get_loc(tahun_terburuk)] = 'red'
+fig, ax = plt.subplots(figsize=(12, 6))
+df_filtered.plot(kind='bar', ax=ax, colormap='viridis', color=colors)
+ax.set_title("Rata-Rata Kualitas Udarah per Tahun")
+ax.set_ylabel("Konsentrasi")
+for i, val in enumerate(df_filtered):
+    ax.text(i, val, f"{val:.2f}", ha='center', va='bottom', fontsize=10, fontweight='bold', color='black')
+
+
+st.pyplot(fig)
+
 st.subheader("Heatmap Korelasi Parameter")
-kolom_korelasi = ['TEMP', 'PRES', 'DEWP', 'RAIN', 'WSPM'] + selected_parameters
-korelasi_data = data_filter[kolom_korelasi].corr()
+
+kolom_sebab= ["TEMP","PRES","DEWP","RAIN", "WSPM", "Rata-Rata Kualitas Udarah" ]
+korelasi_data = data[kolom_sebab].corr()
+korelasi_rata2 = korelasi_data['Rata-Rata Kualitas Udarah'].drop("Rata-Rata Kualitas Udarah").abs()
+
+korelasi_rata2 = korelasi_rata2.round(2)
+
+max_corr = korelasi_rata2.max()
+faktor_terkuat = korelasi_rata2[korelasi_rata2 == max_corr]
+faktor_str = ", ".join([f"{kol}: {nilai:.2f}" for kol, nilai in faktor_terkuat.items()])
+st.metric("Faktor yang Paling Mempengaruhi Kualitas Udara", value=faktor_str)
+
+
+
 fig, ax = plt.subplots(figsize=(10, 6))
 sns.heatmap(korelasi_data, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5, ax=ax)
 st.pyplot(fig)
-
-st.subheader("Penjelasan Parameter")
-st.write("**TEMP:** Suhu udara dalam derajat Celcius.")
-st.write("**PRES:** Tekanan udara dalam hPa.")
-st.write("**DEWP:** Titik embun dalam derajat Celcius.")
-st.write("**RAIN:** Curah hujan dalam mm.")
-st.write("**WSPM:** Kecepatan angin dalam m/s.")
-st.write("**PM2.5:** Partikel udara dengan diameter kurang dari 2.5 mikrometer.")
-st.write("**PM10:** Partikel udara dengan diameter kurang dari 10 mikrometer.")
-st.write("**SO2:** Konsentrasi sulfur dioksida.")
-st.write("**NO2:** Konsentrasi nitrogen dioksida.")
-st.write("**CO:** Konsentrasi karbon monoksida.")
-st.write("**O3:** Konsentrasi ozon.")
-st.write("**Rata-Rata Kualitas Udara:** Nilai agregat kualitas udara berdasarkan parameter di atas.")
-
-
